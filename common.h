@@ -19,7 +19,7 @@
 #include <unistd.h>
 #define PORT 8080
 
-const std::string CFG_FILE("../../../enbsim.cfg");
+const std::string CFG_FILE("../enbsim.cfg");
 
 enum class UeMode {
     UL_ONLY,
@@ -93,10 +93,17 @@ private:
 
     void ParseKeyValPair(const std::string& key, const std::string& val) {
         try {
-            if (key.compare("M") == 0) {
+            if (key.compare("L") == 0) {
+                L = std::stoul(val);
+            } else if (key.compare("M") == 0) {
                 M = std::stoul(val);
             } else if (key.compare("N") == 0) {
                 N = std::stoul(val);
+            } else if (key.compare("UE_MODE") == 0) {
+                UE_MODE = val.compare("UPLINK_ONLY") == 0 ? UeMode::UL_ONLY
+                        : val.compare("DOWNLINK_ONLY") == 0 ? UeMode::DL_ONLY
+                        : val.compare("MIXED") == 0 ? UeMode::MIXED
+                        : throw std::range_error("bad UE_MODE value");
             } else if (key.compare("SF_TIME") == 0) {
                 SF_TIME = std::chrono::milliseconds(std::stoul(val));
             } else {
