@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
+#include <numeric>
 
 #include "../common.h"
 
@@ -19,6 +20,8 @@ class Scheduler {
     std::vector<unsigned> subframes;
 
   public:
+    unsigned success = 0;
+    unsigned total = 0;
     Scheduler(unsigned simulation_len, unsigned window_len, unsigned rb_per_sf)
       : window_len_(window_len),
         rb_per_sf_(rb_per_sf),
@@ -39,7 +42,15 @@ class Scheduler {
             if(first + data_len > window_end) break;
             std::for_each(first, first + data_len, inc);
         }
+        total += num;
+        success += num_reserved;
         return num_reserved;
+    }
+
+    double avgBlockPerSf (unsigned from, unsigned len) {
+        const auto first = subframes.cbegin() + from;
+        assert(first + len <= subframes.cend());
+        return std::accumulate(first, first + len, 0.0) / len;
     }
 
     void printWindow(unsigned from, unsigned len) {
@@ -72,7 +83,6 @@ int main() {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-
     Scheduler schUplink(cfg.SIMULATION_PERIOD_SF, cfg.K, cfg.N);
     Scheduler schDownlink(cfg.SIMULATION_PERIOD_SF, cfg.K, cfg.N);
 
@@ -133,6 +143,15 @@ int main() {
         std::cout << "Reserved blocks in DL subframes:\n";
         schDownlink.printWindow(cfg.SIMULATION_PERIOD_SF - 1, cfg.K);
     }
+    const double success_rate = 100.0 * (schUplink.success + schDownlink.success) / (schUplink.total + schDownlink.total);
+    const double ul_blk_per_sf = schUplink.avgBlockPerSf(0, cfg.SIMULATION_PERIOD_SF - 1);
+    const double dl_blk_per_sf = schUplink.avgBlockPerSf(0, cfg.SIMULATION_PERIOD_SF - 1);
+    std::cout << "\nSuccess rate: " << success_rate << "%\n";
+    // Throughput calculation assumes 1000 sf/sec regardless of SF_TIME value.
+    std::cout << "Uplink throughput: " << 1000.0 * ul_blk_per_sf << " bytes/sec\n";
+    std::cout << "Downlink throughput: " << 1000.0 * dl_blk_per_sf << " bytes/sec\n";
+    std::cout << "Uplink utilization: " << 100.0 * ul_blk_per_sf / cfg.N << " %\n";
+    std::cout << "Downlink utilization: " << 100.0 * dl_blk_per_sf / cfg.N << " %\n";
     close(sockfd);
     exit(EXIT_SUCCESS);
 }

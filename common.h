@@ -100,6 +100,8 @@ private:
                 M = std::stoul(val);
             } else if (key.compare("N") == 0) {
                 N = std::stoul(val);
+            } else if (key.compare("SIMULATION_PERIOD_SF") == 0) {
+                SIMULATION_PERIOD_SF = std::stoul(val);
             } else if (key.compare("UE_MODE") == 0) {
                 UE_MODE = val.compare("UPLINK_ONLY") == 0 ? UeMode::UL_ONLY
                         : val.compare("DOWNLINK_ONLY") == 0 ? UeMode::DL_ONLY
