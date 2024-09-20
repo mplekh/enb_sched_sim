@@ -62,7 +62,7 @@ struct SchedulerResponse {
 
 struct Configuration {
     bool DEBUGPRINTS = true;
-    std::chrono::milliseconds SF_TIME = std::chrono::milliseconds(1U); // Subframe duration, milliseconds (wall-clock time delay in simulation)
+    std::chrono::milliseconds SF_TIME_SCALE = std::chrono::milliseconds(1U); // Subframe duration, milliseconds (wall-clock time delay in simulation)
 
     unsigned SIMULATION_PERIOD_SF = 200;
     UeMode UE_MODE = UeMode::MIXED;
@@ -108,8 +108,8 @@ private:
                         : val.compare("DOWNLINK_ONLY") == 0 ? UeMode::DL_ONLY
                         : val.compare("MIXED") == 0 ? UeMode::MIXED
                         : throw std::range_error("bad UE_MODE value");
-            } else if (key.compare("SF_TIME") == 0) {
-                SF_TIME = std::chrono::milliseconds(std::stoul(val));
+            } else if (key.compare("SF_TIME_SCALE") == 0) {
+                SF_TIME_SCALE = std::chrono::milliseconds(std::stoul(val));
             } else if (key.compare("DEBUGPRINTS") == 0) {
                 DEBUGPRINTS = std::stoul(val);
             } else {

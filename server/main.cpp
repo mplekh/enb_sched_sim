@@ -33,7 +33,7 @@ int main() {
 
     unsigned current_sf;
     for (current_sf = 0; current_sf < cfg.SIMULATION_PERIOD_SF; current_sf++) {
-        std::cout << "subframe " << current_sf << "\n";
+        if (cfg.DEBUGPRINTS) std::cout << "subframe " << current_sf << "\n";
 
         std::vector<ResourceRequest> aggregated_reqests;
         socklen_t len = sizeof(servaddr);
@@ -92,7 +92,7 @@ int main() {
     const double ul_blk_per_sf = schUplink.avgBlockPerSf(0, cfg.SIMULATION_PERIOD_SF - 1);
     const double dl_blk_per_sf = schUplink.avgBlockPerSf(0, cfg.SIMULATION_PERIOD_SF - 1);
     std::cout << "\nSuccess rate: " << success_rate << "%\n";
-    // Throughput calculation assumes 1000 sf/sec regardless of SF_TIME value.
+    // Throughput calculation assumes 1000 sf/sec regardless of SF_TIME_SCALE value.
     std::cout << "Uplink throughput: " << 1000.0 * ul_blk_per_sf << " bytes/sec\n";
     std::cout << "Downlink throughput: " << 1000.0 * dl_blk_per_sf << " bytes/sec\n";
     std::cout << "Uplink utilization: " << 100.0 * ul_blk_per_sf / cfg.N << " %\n";

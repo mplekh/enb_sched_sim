@@ -98,12 +98,12 @@ class UE {
                 std::cout << outstr.str();
             }
             // After receiving the response, the UE first sleeps for L subframes
-            std::this_thread::sleep_for(L * cfg.SF_TIME);
+            std::this_thread::sleep_for(L * cfg.SF_TIME_SCALE);
             // If UE receives a success response, it continues generating the next request message
             if(resp.status == AllocationStatus::SUCCESS) continue;
             std::uniform_int_distribution<std::mt19937::result_type> unif_dist(1, L);
             const unsigned sleep_on_busy = unif_dist(rng);
-            std::this_thread::sleep_for( sleep_on_busy * cfg.SF_TIME);
+            std::this_thread::sleep_for( sleep_on_busy * cfg.SF_TIME_SCALE);
         }
     }
 };
@@ -126,6 +126,7 @@ int main() {
     for(unsigned i = 0; i < cfg.M; i++) {
         downlink_channels.emplace_back();
     }
+
     std::vector<UE> connected_ues;
     for(unsigned i = 0; i < cfg.M; i++) {
         connected_ues.emplace_back(i, uplink_channel, downlink_channels);
@@ -136,8 +137,12 @@ int main() {
         ueThreads.emplace_back(ue);
     }
 
+    unsigned success_ul{}, success_dl{}, total_ul{}, total_dl{};
+    std::vector<unsigned> last_success_sf(cfg.M);
+    std::vector<double> avg_success_times(cfg.M);
+
     for(unsigned i = 1; i <= cfg.SIMULATION_PERIOD_SF; ++i) {
-        std::this_thread::sleep_for(cfg.SF_TIME);
+        std::this_thread::sleep_for(cfg.SF_TIME_SCALE);
         const size_t num_requests = uplink_channel.size();
         if (cfg.DEBUGPRINTS) {
             std::ostringstream outstr;
@@ -148,7 +153,7 @@ int main() {
         }
         std::vector<ResourceRequest> aggregated_reqests(num_requests);
         for (auto& req : aggregated_reqests) {
-            if(!uplink_channel.pop(req)) {
+            if (!uplink_channel.pop(req)) {
                 std::cout << "interrupted" << std::endl;
                 break;
             }
@@ -156,13 +161,30 @@ int main() {
 
         socklen_t len = sizeof(servaddr);
         SockSend(sockfd, servaddr, len, aggregated_reqests);
-        if(aggregated_reqests.empty()) continue;
+        if (aggregated_reqests.empty()) continue;
 
         std::vector<SchedulerResponse> scheduler_response;
         SockRecv(sockfd, servaddr, len, scheduler_response);
 
         for (auto resp : scheduler_response) {
             downlink_channels.at(resp.ue_id).push(resp);
+        }
+        // collect statistics after dispatch
+        unsigned resp_num = 0;
+        for (auto resp : scheduler_response) {
+            assert(aggregated_reqests.at(resp_num).ue_id == resp.ue_id);
+            const bool is_ul = aggregated_reqests.at(resp_num).resource_type == ResourceType::UL;
+            resp_num++;
+            if (is_ul) total_ul++; else total_dl++;
+            if (resp.status != AllocationStatus::SUCCESS) continue;
+            if (is_ul) success_ul++; else success_dl++;
+            if (last_success_sf.at(resp.ue_id) != 0) {
+                if (avg_success_times.at(resp.ue_id) == 0)
+                    avg_success_times.at(resp.ue_id) = (i - last_success_sf.at(resp.ue_id));
+                else
+                    avg_success_times.at(resp.ue_id) = (avg_success_times.at(resp.ue_id) + (i - last_success_sf.at(resp.ue_id))) / 2.0;
+            }
+            last_success_sf.at(resp.ue_id) = i;
         }
     }
 
@@ -173,5 +195,21 @@ int main() {
         t.join();
     }
     close(sockfd);
+
+    const double success_rate = 100.0 * (success_ul + success_dl) / (total_ul + total_dl);
+    /* Throughput calculation based on number of successful allocations, therefore it have to
+     * take into account subframes after simulation end. With short simulation period, throughput
+     * numbers will be lower than reported on server side.
+     */
+    const double ul_blk_per_sf = 1.0 * success_ul * cfg.L / (cfg.SIMULATION_PERIOD_SF + cfg.K - 1);
+    const double dl_blk_per_sf = 1.0 * success_dl * cfg.L / (cfg.SIMULATION_PERIOD_SF + cfg.K - 1);
+    std::cout << "\nSuccess rate: " << success_rate << "%\n";
+    // Throughput calculation assumes 1000 sf/sec regardless of SF_TIME_SCALE value.
+    std::cout << "Uplink throughput: " << 1000.0 * ul_blk_per_sf << " bytes/sec\n";
+    std::cout << "Downlink throughput: " << 1000.0 * dl_blk_per_sf << " bytes/sec\n";
+
+    const double avg_delay = std::accumulate(avg_success_times.cbegin(), avg_success_times.cend(), 0.0) / avg_success_times.size();
+    std::cout << "\nAverage delay:: " << avg_delay << " ms\n";
+
     exit(EXIT_SUCCESS);
 }
