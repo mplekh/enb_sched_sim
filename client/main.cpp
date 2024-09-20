@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <sstream>
-#include <cstring>
 #include <thread>
 #include <cassert>
 #include <random>
