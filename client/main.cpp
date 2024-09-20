@@ -9,7 +9,6 @@
 #include <iostream>
 #include <sstream>
 #include <cstring>
-#include <vector>
 #include <thread>
 #include <cassert>
 #include <random>
@@ -18,9 +17,9 @@
 
 template<typename T>
 class Fifo {
-    std::queue<T> queue_;
-    std::mutex mtx_;
-    std::condition_variable cond_empty_;
+    std::queue<T> queue_{};
+    std::mutex mtx_{};
+    std::condition_variable cond_empty_{};
     bool done_ = false;
 
   public:

@@ -14,6 +14,7 @@
 #include <mutex>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -64,7 +65,7 @@ struct Configuration {
 
     unsigned SIMULATION_PERIOD_SF = 200;
     UeMode UE_MODE = UeMode::MIXED;
-    unsigned K; // maximum advance scheduling time
+    unsigned K{}; // maximum advance scheduling time
     unsigned L = 16; // data length
     unsigned M = 16; // number of UEs to simulate
     uint32_t N = 64; // number of resource blocks (indifidual frequency channels)
@@ -106,6 +107,8 @@ private:
                         : throw std::range_error("bad UE_MODE value");
             } else if (key.compare("SF_TIME") == 0) {
                 SF_TIME = std::chrono::milliseconds(std::stoul(val));
+            } else if (key.compare("DEBUGPRINTS") == 0) {
+                DEBUGPRINTS = std::stoul(val);
             } else {
                 std::cerr << "Unknown key in config: "<< key << "=" << val << '\n';
                 return;
