@@ -208,8 +208,18 @@ int main() {
     std::cout << "Uplink throughput: " << 1000.0 * ul_blk_per_sf << " bytes/sec\n";
     std::cout << "Downlink throughput: " << 1000.0 * dl_blk_per_sf << " bytes/sec\n";
 
-    const double avg_delay = std::accumulate(avg_success_times.cbegin(), avg_success_times.cend(), 0.0) / avg_success_times.size();
-    std::cout << "\nAverage delay:: " << avg_delay << " ms\n";
-
+    std::vector<double> nz_avg_success_times;
+    for(auto t : avg_success_times) {
+        if (t > 0.0) nz_avg_success_times.push_back(t);
+    }
+    if (nz_avg_success_times.size() > 0) {
+        const double avg_delay = std::accumulate(nz_avg_success_times.cbegin(), nz_avg_success_times.cend(), 0.0) / nz_avg_success_times.size();
+        std::cout << "Average delay: " << avg_delay << " ms\n";
+    }
+    const unsigned num_unserved_ues = avg_success_times.size() - nz_avg_success_times.size();
+    if (num_unserved_ues > 0) {
+        std::cerr << "Insufficient simulation time, increase SIMULATION_PERIOD_SF parameter\n";
+        std::cout << "Number of unserved UEs: " << num_unserved_ues << " (" << 100.0 * num_unserved_ues / avg_success_times.size() << " %)\n";
+    }
     exit(EXIT_SUCCESS);
 }
