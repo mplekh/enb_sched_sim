@@ -11,6 +11,7 @@
 #include <thread>
 #include <cassert>
 #include <random>
+#include <chrono>
 
 #include "../common.h"
 
@@ -67,7 +68,7 @@ class Fifo {
 };
 
 class UE {
-    uint32_t ue_id_;
+    uint16_t ue_id_;
     Fifo<ResourceRequest>& uplink_;
     std::vector<Fifo<SchedulerResponse>>& downlink_;
 
@@ -85,7 +86,7 @@ class UE {
             const auto dir = cfg.UE_MODE == UeMode::DL_ONLY ? ResourceType::DL
                            : cfg.UE_MODE == UeMode::UL_ONLY ? ResourceType::UL
                            : static_cast<ResourceType>(resource_type(rng));
-            const uint32_t L = cfg.L;
+            const uint16_t L = cfg.L;
             uplink_.push({ue_id_, dir, L});
             // After generating a request, the UE waits for a response message
             SchedulerResponse resp;
@@ -140,7 +141,9 @@ int main() {
     unsigned success_ul{}, success_dl{}, total_ul{}, total_dl{};
     std::vector<unsigned> last_success_sf(cfg.M);
     std::vector<double> avg_success_times(cfg.M);
+    std::vector<unsigned> success_count(cfg.M);
 
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for(unsigned i = 1; i <= cfg.SIMULATION_PERIOD_SF; ++i) {
         std::this_thread::sleep_for(cfg.SF_TIME_SCALE);
         const size_t num_requests = uplink_channel.size();
@@ -179,14 +182,14 @@ int main() {
             if (resp.status != AllocationStatus::SUCCESS) continue;
             if (is_ul) success_ul++; else success_dl++;
             if (last_success_sf.at(resp.ue_id) != 0) {
-                if (avg_success_times.at(resp.ue_id) == 0)
-                    avg_success_times.at(resp.ue_id) = (i - last_success_sf.at(resp.ue_id));
-                else
-                    avg_success_times.at(resp.ue_id) = (avg_success_times.at(resp.ue_id) + (i - last_success_sf.at(resp.ue_id))) / 2.0;
+                avg_success_times.at(resp.ue_id) += (i - last_success_sf.at(resp.ue_id));
+                success_count.at(resp.ue_id) += 1;
             }
             last_success_sf.at(resp.ue_id) = i;
         }
     }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "\nSimulation time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 
     for(auto& ch : downlink_channels) {
         ch.done();
@@ -209,9 +212,11 @@ int main() {
     std::cout << "Downlink throughput: " << 1000.0 * dl_blk_per_sf << " bytes/sec\n";
 
     std::vector<double> nz_avg_success_times;
-    for(auto t : avg_success_times) {
-        if (t > 0.0) nz_avg_success_times.push_back(t);
+
+    for(unsigned t = 0; t < avg_success_times.size(); t++) {
+        if (success_count.at(t) > 0) nz_avg_success_times.push_back(avg_success_times.at(t) / success_count.at(t));
     }
+
     if (nz_avg_success_times.size() > 0) {
         const double avg_delay = std::accumulate(nz_avg_success_times.cbegin(), nz_avg_success_times.cend(), 0.0) / nz_avg_success_times.size();
         std::cout << "Average delay: " << avg_delay << " ms\n";

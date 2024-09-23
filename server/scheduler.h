@@ -54,11 +54,11 @@ class Scheduler {
     void printWindow(unsigned from, unsigned len) {
         auto print = [](const unsigned& n) { std::cout << n << ' '; };
         const auto first = subframes.cbegin() + from;
+        assert(first + len <= subframes.cend());
         std::for_each(subframes.cbegin(), first, print);
         std::cout << "[ ";
         std::for_each(first, first + len, print);
         std::cout << "] ";
-        assert(first + len <= subframes.cend());
         std::for_each(first + len, subframes.cend(), print);
         std::cout << "\n";
     }

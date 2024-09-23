@@ -29,7 +29,7 @@ enum class UeMode {
     MIXED
 };
 
-enum ResourceType : uint32_t {
+enum class ResourceType : uint16_t {
     UL = 0,
     DL
 };
@@ -39,7 +39,7 @@ std::ostream& operator << (std::ostream& os, const ResourceType& obj) {
     return os;
 }
 
-enum class AllocationStatus : uint32_t {
+enum class AllocationStatus : uint16_t {
     SUCCESS,
     FAIL
 };
@@ -50,13 +50,13 @@ std::ostream& operator << (std::ostream& os, const AllocationStatus& obj) {
 }
 
 struct ResourceRequest {
-    uint32_t ue_id;
+    uint16_t ue_id;
     ResourceType resource_type;
-    uint32_t data_length;
+    uint16_t data_length;
 };
 
 struct SchedulerResponse {
-    uint32_t ue_id;
+    uint16_t ue_id;
     AllocationStatus status;
 };
 
